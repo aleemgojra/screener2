@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3D4CF2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Screener">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>:root{color-scheme:light}html{padding-top:env(safe-area-inset-top,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<title>Pocket Screener</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: sticky header with rule strip and exchange chips, then one result card per match. */
+:root{
+  --bg:#EDEFF3; --surface:#FFFFFF; --ink:#151A23; --muted:#5E6877; --line:#D8DCE4;
+  --accent:#3D4CF2; --accent-ink:#FFFFFF; --up:#0E8F5B; --down:#D23B3B;
+  --up-bg:#DDF3E8; --down-bg:#FBE1E1; --warn-bg:#FFF1D6; --warn-ink:#7A5200;
+  --font-ui:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-num:"DM Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1118; --surface:#161B25; --ink:#E8ECF3; --muted:#8E99AB; --line:#262D3A;
+  --accent:#8E9BFF; --accent-ink:#0E1118; --up:#38C98B; --down:#FF6B6B;
+  --up-bg:#12382A; --down-bg:#431D1F; --warn-bg:#3A2F10; --warn-ink:#F2C879; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1118; --surface:#161B25; --ink:#E8ECF3; --muted:#8E99AB; --line:#262D3A;
+  --accent:#8E9BFF; --accent-ink:#0E1118; --up:#38C98B; --down:#FF6B6B;
+  --up-bg:#12382A; --down-bg:#431D1F; --warn-bg:#3A2F10; --warn-ink:#F2C879; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:15px;line-height:1.4;
+  padding-inline:16px;padding-block:0 32px;-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:560px;margin-inline:auto;min-width:0}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:14px 8px}
+.head-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{font-size:20px;font-weight:700;letter-spacing:-.01em;margin:0}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn[disabled]{opacity:.55;cursor:default}
+.rules{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.rule{font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:3px 8px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-block:10px 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 12px;font-size:13px;font-weight:500}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip small{opacity:.75;margin-left:4px;font-family:var(--font-num)}
+.src{display:grid;gap:6px;margin-block:8px}
+.srcrow{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);min-width:0}
+.dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--up)} .dot.err{background:var(--down)} .dot.busy{background:var(--accent)}
+.srcrow span{min-width:0;overflow-wrap:anywhere}
+.banner{background:var(--warn-bg);color:var(--warn-ink);border-radius:10px;padding:10px 12px;font-size:13px;margin-block:8px}
+.sortbar{display:flex;justify-content:space-between;align-items:center;padding-block:6px;font-size:13px;color:var(--muted)}
+.sel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px;color:var(--ink)}
+.list{display:grid;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.id{min-width:0}
+.sym{font-family:var(--font-num);font-weight:700;font-size:17px}
+.tag{display:inline-block;margin-left:8px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:1px 6px;vertical-align:2px}
+.name{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.px{text-align:right;flex:none}
+.px b{display:block;font-weight:500;font-size:16px}
+.pill{display:inline-block;margin-top:2px;padding:1px 7px;border-radius:6px;font-size:12px;font-weight:500}
+.pill.up{background:var(--up-bg);color:var(--up)} .pill.down{background:var(--down-bg);color:var(--down)} .pill.flat{background:var(--bg);color:var(--muted)}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.m{background:var(--bg);border-radius:8px;padding:8px 10px;min-width:0}
+.m span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.m b{font-weight:500;font-size:15px}
+.m i{font-style:normal;color:var(--up);margin-left:4px;font-size:12px}
+.m small{display:block;font-size:11px;color:var(--muted);margin-top:1px}
+.empty{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:26px 16px;text-align:center;color:var(--muted);font-size:14px}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+.foot{margin-top:16px;font-size:12px;color:var(--muted)}
+</style>
+
+<title>Pocket Screener</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: sticky header with rule strip and exchange chips, then one result card per match. */
+:root{
+  --bg:#EDEFF3; --surface:#FFFFFF; --ink:#151A23; --muted:#5E6877; --line:#D8DCE4;
+  --accent:#3D4CF2; --accent-ink:#FFFFFF; --up:#0E8F5B; --down:#D23B3B;
+  --up-bg:#DDF3E8; --down-bg:#FBE1E1; --warn-bg:#FFF1D6; --warn-ink:#7A5200;
+  --font-ui:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-num:"DM Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1118; --surface:#161B25; --ink:#E8ECF3; --muted:#8E99AB; --line:#262D3A;
+  --accent:#8E9BFF; --accent-ink:#0E1118; --up:#38C98B; --down:#FF6B6B;
+  --up-bg:#12382A; --down-bg:#431D1F; --warn-bg:#3A2F10; --warn-ink:#F2C879; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1118; --surface:#161B25; --ink:#E8ECF3; --muted:#8E99AB; --line:#262D3A;
+  --accent:#8E9BFF; --accent-ink:#0E1118; --up:#38C98B; --down:#FF6B6B;
+  --up-bg:#12382A; --down-bg:#431D1F; --warn-bg:#3A2F10; --warn-ink:#F2C879; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:15px;line-height:1.4;
+  padding-inline:16px;padding-block:0 32px;-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:560px;margin-inline:auto;min-width:0}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:14px 8px}
+.head-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{font-size:20px;font-weight:700;letter-spacing:-.01em;margin:0}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn[disabled]{opacity:.55;cursor:default}
+.rules{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.rule{font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:3px 8px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-block:10px 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 12px;font-size:13px;font-weight:500}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip small{opacity:.75;margin-left:4px;font-family:var(--font-num)}
+.src{display:grid;gap:6px;margin-block:8px}
+.srcrow{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);min-width:0}
+.dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--up)} .dot.err{background:var(--down)} .dot.busy{background:var(--accent)}
+.srcrow span{min-width:0;overflow-wrap:anywhere}
+.banner{background:var(--warn-bg);color:var(--warn-ink);border-radius:10px;padding:10px 12px;font-size:13px;margin-block:8px}
+.sortbar{display:flex;justify-content:space-between;align-items:center;padding-block:6px;font-size:13px;color:var(--muted)}
+.sel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px;color:var(--ink)}
+.list{display:grid;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.id{min-width:0}
+.sym{font-family:var(--font-num);font-weight:700;font-size:17px}
+.tag{display:inline-block;margin-left:8px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:1px 6px;vertical-align:2px}
+.name{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.px{text-align:right;flex:none}
+.px b{display:block;font-weight:500;font-size:16px}
+.pill{display:inline-block;margin-top:2px;padding:1px 7px;border-radius:6px;font-size:12px;font-weight:500}
+.pill.up{background:var(--up-bg);color:var(--up)} .pill.down{background:var(--down-bg);color:var(--down)} .pill.flat{background:var(--bg);color:var(--muted)}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.m{background:var(--bg);border-radius:8px;padding:8px 10px;min-width:0}
+.m span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.m b{font-weight:500;font-size:15px}
+.m i{font-style:normal;color:var(--up);margin-left:4px;font-size:12px}
+.m small{display:block;font-size:11px;color:var(--muted);margin-top:1px}
+.empty{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:26px 16px;text-align:center;color:var(--muted);font-size:14px}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+.foot{margin-top:16px;font-size:12px;color:var(--muted)}
+</style>
+
+<body>
+<div class="wrap">
+  <header>
+    <div class="head-row">
+      <h1>Pocket Screener</h1>
+      <button class="btn primary" id="scan" type="button">Scan now</button>
+    </div>
+    <div class="rules" aria-label="Rules every result passes">
+      <span class="rule num">P/E &lt; 20</span>
+      <span class="rule num">Volume &gt; 2× 20-day avg</span>
+      <span class="rule num">RSI(14) &gt; 50</span>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Exchange"></div>
+  </header>
+
+  <div class="src" id="src"></div>
+  <div id="banner"></div>
+
+  <div class="sortbar">
+    <span id="count"></span>
+    <label>Sort <select class="sel" id="sort">
+      <option value="ratio">Volume spike</option><option value="rsi">RSI</option><option value="pe">P/E</option><option value="chg">Day change</option>
+    </select></label>
+  </div>
+  <main class="list" id="list"></main>
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id)};
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+
+/* ---------- Rules ---------- */
+var PE_MAX=20,VOL_MULT=2,RSI_MIN=50,RSI_N=14,AVG_N=20;
+var MIN_QUOTE_VOL=1e6;   // skip Binance pairs trading under $1M a day
+var MAX_PAIRS=400;
+
+/* ---------- Indicators (same maths as build_data.py) ---------- */
+function rsiWilder(c,n){n=n||RSI_N;if(c.length<n+1)return null;var g=0,l=0,i,d;
+  for(i=1;i<=n;i++){d=c[i]-c[i-1];g+=Math.max(d,0);l+=Math.max(-d,0)}
+  g/=n;l/=n;
+  for(i=n+1;i<c.length;i++){d=c[i]-c[i-1];g=(g*(n-1)+Math.max(d,0))/n;l=(l*(n-1)+Math.max(-d,0))/n}
+  return l===0?100:100-100/(1+g/l)}
+function mean(a){var s=0;for(var i=0;i<a.length;i++)s+=a[i];return s/a.length}
+window.__ind={rsiWilder:rsiWilder};
+
+/* ---------- State ---------- */
+var R={stocks:[],crypto:[]};
+var SRC={stocks:{state:"idle",msg:"Not loaded"},crypto:{state:"idle",msg:"Not loaded"}};
+var UI={ex:"All",sort:"ratio",demo:false};
+
+/* ---------- Binance (live, from the browser) ---------- */
+var BASES=["https://data-api.binance.vision","https://api.binance.com"];
+function bj(path){var i=0;
+  function next(err){if(i>=BASES.length)return Promise.reject(err);var b=BASES[i++];
+    return fetch(b+path).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}).catch(next)}
+  return next(new Error("no host"))}
+var STABLE=/^(USDC|FDUSD|TUSD|USDP|DAI|BUSD|USDD|EUR|EURI|GBP|AEUR|PAXG|XUSD|USD1|UST|USDS|BFUSD)$/;
+function scanCrypto(){
+  SRC.crypto={state:"busy",msg:"Reading Binance tickers…"};paint();
+  return bj("/api/v3/ticker/24hr").then(function(all){
+    var cand=all.filter(function(t){
+      if(!/USDT$/.test(t.symbol))return false;var base=t.symbol.slice(0,-4);
+      return !STABLE.test(base)&&+t.quoteVolume>=MIN_QUOTE_VOL&&+t.lastPrice>0;
+    }).sort(function(a,b){return b.quoteVolume-a.quoteVolume}).slice(0,MAX_PAIRS);
+    var out=[],done=0,fail=0,idx=0;
+    function one(t){
+      return bj("/api/v3/klines?symbol="+t.symbol+"&interval=1d&limit=75").then(function(k){
+        k=k.slice(0,-1);                         // drop today's unfinished candle
+        if(k.length<AVG_N+RSI_N+1)return;
+        var closes=k.map(function(x){return +x[4]}),qv=k.map(function(x){return +x[7]});
+        closes.push(+t.lastPrice);                // RSI uses the live price as the latest close
+        var avg=mean(qv.slice(-AVG_N)),ratio=avg>0?(+t.quoteVolume)/avg:0,r=rsiWilder(closes);
+        if(r!==null&&r>RSI_MIN&&ratio>VOL_MULT)
+          out.push({id:"c:"+t.symbol,kind:"crypto",sym:t.symbol.slice(0,-4),name:t.symbol.slice(0,-4)+"/USDT",exch:"Binance",
+            price:+t.lastPrice,chg:+t.priceChangePercent,pe:null,rsi:r,ratio:ratio,vol:+t.quoteVolume,avgVol:avg,volUnit:"$"});
+      }).catch(function(){fail++}).then(function(){done++;
+        SRC.crypto={state:"busy",msg:"Checking pairs "+done+" of "+cand.length+"…"};if(done%10===0)paint()})}
+    function worker(){if(idx>=cand.length)return Promise.resolve();return one(cand[idx++]).then(worker)}
+    var ws=[];for(var w=0;w<8;w++)ws.push(worker());
+    return Promise.all(ws).then(function(){
+      R.crypto=out;
+      SRC.crypto={state:"ok",msg:"Binance: "+out.length+" match from "+cand.length+" USDT pairs"+(fail?" ("+fail+" failed)":"")};
+    })
+  }).catch(function(e){
+    R.crypto=[];
+    SRC.crypto={state:"err",msg:"Binance unreachable ("+e.message+"). Binance blocks some regions and the preview sandbox."}})}
+
+/* ---------- Stocks (precomputed data.json) ---------- */
+function loadStocks(){
+  SRC.stocks={state:"busy",msg:"Loading stock scan…"};paint();
+  return fetch("data.json?"+Date.now(),{cache:"no-store"}).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}).then(function(d){
+    var rows=(d.stocks||[]).filter(function(s){return s.pe>0&&s.pe<PE_MAX&&s.ratio>VOL_MULT&&s.rsi>RSI_MIN});
+    R.stocks=rows.map(function(s){return {id:"s:"+s.sym,kind:"stock",sym:s.sym,name:s.name,exch:s.exch,price:s.price,chg:s.chg,pe:s.pe,rsi:s.rsi,ratio:s.ratio,vol:s.vol,avgVol:s.avgVol,volUnit:"sh",asOf:s.asOf}});
+    if(!d.generated){
+      SRC.stocks={state:"err",msg:"The stock scan has never run. In GitHub open Actions, pick Refresh stock scan, then Run workflow. If you cannot find it, see step 3 in README.txt."};return}
+    var age=(Date.now()-Date.parse(d.generated))/864e5;
+    var when=new Date(d.generated).toLocaleString([], {dateStyle:"medium",timeStyle:"short"});
+    var n=(d.universe?(d.universe.NASDAQ||0)+(d.universe.NYSE||0):0);
+    SRC.stocks={state:age>4?"err":"ok",msg:"Stocks: "+R.stocks.length+" match. Scanned "+(d.scanned||0)+" of "+n+", "+(d.passedRsiVolume||0)+" passed RSI and volume, "+(d.peLookupsOk||0)+" had a P/E lookup. Scan from "+when+(age>4?" (older than 4 days)":"")+"."};
+  }).catch(function(e){
+    R.stocks=[];
+    SRC.stocks={state:"err",msg:"Could not load data.json ("+e.message+"). The file must sit next to index.html in the repo, and Pages must be switched on."}})}
+
+/* ---------- Demo rows, only to preview the layout ---------- */
+function demo(){
+  R.stocks=[
+   {id:"d1",kind:"stock",sym:"DEMO1",name:"Sample Industrial Co (not real)",exch:"NYSE",price:48.2,chg:3.4,pe:14.1,rsi:63.2,ratio:2.6,vol:5.2e6,avgVol:2e6,volUnit:"sh"},
+   {id:"d2",kind:"stock",sym:"DEMO2",name:"Sample Software Inc (not real)",exch:"NASDAQ",price:22.7,chg:5.9,pe:18.8,rsi:71.5,ratio:3.9,vol:9.1e6,avgVol:2.3e6,volUnit:"sh"}];
+  R.crypto=[{id:"d3",kind:"crypto",sym:"DEMO3",name:"DEMO3/USDT (not real)",exch:"Binance",price:1.84,chg:7.2,pe:null,rsi:66.8,ratio:2.3,vol:3.4e7,avgVol:1.5e7,volUnit:"$"}];
+  UI.demo=true;SRC.stocks={state:"ok",msg:"Demo rows. Not real market data."};SRC.crypto={state:"ok",msg:"Demo rows. Not real market data."};paint()}
+
+/* ---------- Render ---------- */
+function fmtPx(p){if(p>=1000)return"$"+p.toLocaleString("en-US",{maximumFractionDigits:2});if(p>=1)return"$"+p.toFixed(2);if(p>=.01)return"$"+p.toFixed(4);return"$"+p.toPrecision(3)}
+function fmtPct(v){return(v>0?"+":"")+v.toFixed(2)+"%"}
+function fmtVol(v,u){var s=v>=1e9?(v/1e9).toFixed(2)+"B":v>=1e6?(v/1e6).toFixed(1)+"M":v>=1e3?(v/1e3).toFixed(0)+"K":v.toFixed(0);return u==="$"?"$"+s:s}
+function all(){return R.stocks.concat(R.crypto)}
+function visible(){
+  var a=all().filter(function(i){return UI.ex==="All"||i.exch===UI.ex});
+  var k=UI.sort,dir=k==="pe"?1:-1;
+  a.sort(function(x,y){var u=x[k],v=y[k];if(u==null)return 1;if(v==null)return-1;return(u-v)*dir});return a}
+function paint(){
+  var n={All:all().length,NASDAQ:0,NYSE:0,Binance:0};all().forEach(function(i){n[i.exch]=(n[i.exch]||0)+1});
+  $("chips").innerHTML=["All","NASDAQ","NYSE","Binance"].map(function(e){
+    return'<button type="button" class="chip" data-ex="'+e+'" aria-pressed="'+(UI.ex===e)+'">'+e+'<small>'+(n[e]||0)+'</small></button>'}).join("");
+  $("src").innerHTML=["stocks","crypto"].map(function(k){var s=SRC[k];
+    return'<div class="srcrow"><i class="dot '+s.state+'"></i><span>'+esc(s.msg)+'</span></div>'}).join("");
+  $("banner").innerHTML=UI.demo?'<div class="banner">Demo rows only, to preview the layout. These are not real stocks or prices.</div>':"";
+  var a=visible();
+  $("count").textContent=a.length+(a.length===1?" match":" matches");
+  var busy=SRC.stocks.state==="busy"||SRC.crypto.state==="busy";
+  if(!a.length){
+    $("list").innerHTML='<div class="empty"><b>'+(busy?"Scanning…":"Nothing passes all three rules right now")+'</b>'+
+      (busy?"Binance pairs are checked one by one, so this takes up to a minute.":"That is normal on many days. All three conditions must hold at once.")+
+      (SRC.crypto.state==="err"&&SRC.stocks.state==="err"&&!UI.demo?'<br><br><button type="button" class="btn" id="demoBtn">Preview layout with demo rows</button>':"")+'</div>';
+  }else{
+    $("list").innerHTML=a.map(function(i){
+      var cls=i.chg>0.005?"up":i.chg<-0.005?"down":"flat";
+      return'<article class="card"><div class="top"><div class="id"><span class="sym">'+esc(i.sym)+'</span><span class="tag">'+esc(i.exch)+'</span>'+
+        '<div class="name">'+esc(i.name)+'</div></div>'+
+        '<div class="px"><b class="num">'+fmtPx(i.price)+'</b><span class="pill num '+cls+'">'+fmtPct(i.chg)+'</span></div></div>'+
+        '<div class="metrics">'+
+        '<div class="m"><span>P/E</span><b class="num">'+(i.pe!=null?i.pe.toFixed(1):"n/a")+'</b>'+(i.pe!=null?'<i>✓</i>':'<small>no P/E for crypto</small>')+'</div>'+
+        '<div class="m"><span>Volume</span><b class="num">'+i.ratio.toFixed(1)+'×</b><i>✓</i><small class="num">'+fmtVol(i.vol,i.volUnit)+' vs '+fmtVol(i.avgVol,i.volUnit)+'</small></div>'+
+        '<div class="m"><span>RSI 14</span><b class="num">'+i.rsi.toFixed(0)+'</b><i>✓</i></div></div></article>'}).join("")}
+  var b=$("scan");b.disabled=busy;b.textContent=busy?"Scanning…":"Scan now";
+  $("foot").textContent="Volume spike: latest volume divided by the average of the 20 days before it. Crypto uses 24h USDT volume. Crypto has no P/E, so it is held to the other two rules. Not investment advice."}
+
+document.addEventListener("click",function(e){
+  var c=e.target.closest("[data-ex]");if(c){UI.ex=c.dataset.ex;paint();return}
+  if(e.target.id==="demoBtn")demo()});
+$("sort").addEventListener("change",function(e){UI.sort=e.target.value;paint()});
+function run(){UI.demo=false;R={stocks:[],crypto:[]};paint();Promise.all([loadStocks().then(paint),scanCrypto().then(paint)]).then(paint)}
+$("scan").addEventListener("click",run);
+paint();run();
+})();
+</script>
+<script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}</script>
+</body>
+</html>
