@@ -1,1 +1,1 @@
-{"generated":null,"stocks":[]}
+{"generated":"2026-10-08T13:52:38+00:00","rules":{"peMax":20.0,"volMult":2.0,"rsiMin":50.0},"universe":{"NASDAQ":3266,"NYSE":2088},"scanned":5338,"passedRsiVolume":31,"peLookupsOk":31,"noPe":16,"batchesFailed":0,"stocks":[{"sym":"YSXT","price":1.2799999713897705,"chg":4.065036710645531,"rsi":52.327528092645245,"ratio":2.2058823529411766,"vol":16500.0,"avgVol":7480.0,"asOf":"2026-10-07","pe":11.636363,"name":"YSX Tech. Co., Ltd","exch":"NASDAQ"}]}
